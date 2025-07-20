@@ -1,5 +1,8 @@
 pipeline {
   agent any
+  options {
+    cleanWs()
+  }
 
   environment {
     SSH_KEY_ID   = 'vps-ssh'
