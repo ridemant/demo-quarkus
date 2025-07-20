@@ -1,4 +1,5 @@
 pipeline {
+
   agent any
 
   environment {
@@ -15,17 +16,11 @@ pipeline {
 
   stages {
 
-  stage('Limpiar Workspace') {
-    steps {
-      sh 'rm -rf * .[^.]* || true'
-    }
-  }
-
-    stage('Clonar') {
-      steps {
-        git 'https://github.com/ridemant/demo-quarkus.git'
+      stage('Limpiar Workspace') {
+        steps {
+          sh 'rm -rf * .[^.]* || true'
+        }
       }
-    }
 
     stage('Compilar') {
       steps {
