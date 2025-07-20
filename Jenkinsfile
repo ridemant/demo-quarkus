@@ -20,7 +20,7 @@ pipeline {
       steps {
         sh '''
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
+          ./mvnw clean package -DskipTests "-Dquarkus.package.type=uber-jar"
         '''
       }
     }
@@ -31,14 +31,20 @@ pipeline {
           sh """
             echo "📤 Subiendo proyecto al VPS..."
             ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
-            scp -r Jenkinsfile README.md mvnw mvnw.cmd pom.xml src target ${VPS_TARGET}:/tmp/quarkus-build
 
+            # Detectar el uber-jar generado
+            JAR_NAME=\$(ls target/*-runner.jar | head -n 1)
+            echo "📦 JAR detectado: \$JAR_NAME"
+
+            # Enviar archivos necesarios al VPS
+            scp -r Jenkinsfile README.md mvnw mvnw.cmd pom.xml src target \$JAR_NAME ${VPS_TARGET}:/tmp/quarkus-build
+
+            # Crear Dockerfile temporal en el VPS y construir la imagen
             ssh ${VPS_TARGET} '
               cd /tmp/quarkus-build &&
               echo "🔧 Creando Dockerfile temporal..." &&
-              JAR_NAME=\$(basename \$(ls target/*.jar | head -n1)) &&
-              echo "FROM docker.io/eclipse-temurin:17" > Dockerfile &&
-              echo "COPY target/\$JAR_NAME app.jar" >> Dockerfile &&
+              echo "FROM eclipse-temurin:17" > Dockerfile &&
+              echo "COPY \$(basename \$JAR_NAME) app.jar" >> Dockerfile &&
               echo "ENTRYPOINT [\\"java\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
               podman build -t ${IMAGE_NAME} .
             '
