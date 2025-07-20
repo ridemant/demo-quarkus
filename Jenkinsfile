@@ -72,8 +72,5 @@ stage('Enviar al VPS y construir imagen') {
         rm -rf *.tar *.gz *.zip || true
       '''
     }
-    success {
-
-    }
   }
 }
