@@ -25,33 +25,32 @@ pipeline {
       }
     }
 
-    stage('Enviar al VPS y construir imagen') {
-      steps {
-        sshagent([SSH_KEY_ID]) {
-          sh """
-            echo "📤 Subiendo proyecto al VPS..."
-            ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
+stage('Enviar al VPS y construir imagen') {
+  steps {
+    sshagent([SSH_KEY_ID]) {
+      script {
+        def jarPath = sh(script: "ls target/*-runner.jar", returnStdout: true).trim()
+        def jarName = jarPath.tokenize('/').last()
+        echo "📦 JAR detectado: ${jarName}"
 
-            # Detectar el uber-jar generado
-            JAR_NAME=\$(ls target/*-runner.jar | head -n 1)
-            echo "📦 JAR detectado: \$JAR_NAME"
+        sh """
+          echo "📤 Subiendo al VPS..."
+          ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
+          scp ${jarPath} ${VPS_TARGET}:/tmp/quarkus-build/${jarName}
 
-            # Enviar archivos necesarios al VPS
-            scp -r Jenkinsfile README.md mvnw mvnw.cmd pom.xml src target \$JAR_NAME ${VPS_TARGET}:/tmp/quarkus-build
-
-            # Crear Dockerfile temporal en el VPS y construir la imagen
-            ssh ${VPS_TARGET} '
-              cd /tmp/quarkus-build &&
-              echo "🔧 Creando Dockerfile temporal..." &&
-              echo "FROM eclipse-temurin:17" > Dockerfile &&
-              echo "COPY \$(basename \$JAR_NAME) app.jar" >> Dockerfile &&
-              echo "ENTRYPOINT [\\"java\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
-              podman build -t ${IMAGE_NAME} .
-            '
-          """
-        }
+          ssh ${VPS_TARGET} '
+            cd /tmp/quarkus-build &&
+            echo "🔧 Creando Dockerfile temporal..." &&
+            echo "FROM eclipse-temurin:17" > Dockerfile &&
+            echo "COPY ${jarName} app.jar" >> Dockerfile &&
+            echo "ENTRYPOINT [\\"java\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
+            podman build -t ${IMAGE_NAME} .
+          '
+        """
       }
     }
+  }
+}
 
     stage('Desplegar en Podman') {
       steps {
