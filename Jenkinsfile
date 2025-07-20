@@ -27,17 +27,17 @@ pipeline {
       }
     }
 
-    stage('Build Imagen') {
-      steps {
-        sh "docker build -t ${IMAGE_NAME} ."
-      }
-    }
-
-    stage('Enviar al VPS') {
+    stage('Enviar al VPS y construir imagen') {
       steps {
         sshagent([SSH_KEY_ID]) {
           sh """
-            docker save ${IMAGE_NAME} | bzip2 | ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'bunzip2 | podman load'
+            echo "📤 Subiendo proyecto al VPS..."
+            ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
+            scp -r * ${VPS_TARGET}:/tmp/quarkus-build
+            ssh ${VPS_TARGET} '
+              cd /tmp/quarkus-build &&
+              podman build -t ${IMAGE_NAME} .
+            '
           """
         }
       }
@@ -47,9 +47,10 @@ pipeline {
       steps {
         sshagent([SSH_KEY_ID]) {
           sh """
-            ssh -o StrictHostKeyChecking=no ${VPS_TARGET} '
-              podman stop ${CONTAINER} || true
-              podman rm ${CONTAINER} || true
+            echo "🚀 Desplegando en Podman..."
+            ssh ${VPS_TARGET} '
+              podman stop ${CONTAINER} || true &&
+              podman rm ${CONTAINER} || true &&
               podman run -d --name ${CONTAINER} -p ${REMOTE_PORT}:8080 ${IMAGE_NAME}
             '
           """
