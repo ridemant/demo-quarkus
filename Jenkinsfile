@@ -1,5 +1,4 @@
 pipeline {
-
   agent any
 
   environment {
@@ -15,7 +14,6 @@ pipeline {
   }
 
   stages {
-
     stage('Compilar') {
       steps {
         sh '''
@@ -25,51 +23,49 @@ pipeline {
       }
     }
 
-stage('Enviar al VPS y construir imagen') {
-  steps {
-    sshagent([SSH_KEY_ID]) {
-      script {
-        def jarPath = sh(script: "ls target/*-runner.jar", returnStdout: true).trim()
-        def jarName = jarPath.tokenize('/').last()
+    stage('Enviar al VPS y construir imagen') {
+      steps {
+        sshagent([SSH_KEY_ID]) {
+          sh '''
+            JAR_PATH=$(ls target/*-runner.jar)
+            JAR_NAME=$(basename $JAR_PATH)
 
-        sh """
-          ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
-          scp ${jarPath} ${VPS_TARGET}:/tmp/quarkus-build/${jarName}
+            echo "📤 Subiendo $JAR_NAME al VPS..."
+            ssh -o StrictHostKeyChecking=no $VPS_TARGET 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
+            scp $JAR_PATH $VPS_TARGET:/tmp/quarkus-build/$JAR_NAME
 
-          ssh ${VPS_TARGET} '
-            cd /tmp/quarkus-build &&
-            echo "🔧 Creando Dockerfile temporal..." &&
-            echo "FROM eclipse-temurin:17" > Dockerfile &&
-            echo "COPY ${jarName} app.jar" >> Dockerfile &&
-            echo "ENTRYPOINT [\\"java\\", \\"-Dquarkus.http.port=8081\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
-            podman build -t ${IMAGE_NAME} .
-          '
-        """
+            echo "🔧 Creando Dockerfile y construyendo imagen..."
+            ssh $VPS_TARGET "
+              cd /tmp/quarkus-build &&
+              echo 'FROM eclipse-temurin:17' > Dockerfile &&
+              echo 'COPY $JAR_NAME app.jar' >> Dockerfile &&
+              echo 'ENTRYPOINT [\\"java\\", \\"-Dquarkus.http.port=8081\\", \\"-jar\\", \\"app.jar\\"]' >> Dockerfile &&
+              podman build -t $IMAGE_NAME .
+            "
+          '''
+        }
       }
     }
-  }
-}
 
-stage('Desplegar en Podman') {
-  steps {
-    sshagent([SSH_KEY_ID]) {
-      sh """
-        ssh ${VPS_TARGET} '
-          podman stop ${CONTAINER} || true &&
-          podman rm ${CONTAINER} || true &&
-          podman run -d --name ${CONTAINER} --network=host ${IMAGE_NAME}
-        '
-      """
+    stage('Desplegar en Podman') {
+      steps {
+        sshagent([SSH_KEY_ID]) {
+          sh '''
+            echo "🚀 Desplegando en Podman..."
+            ssh $VPS_TARGET "
+              podman stop $CONTAINER || true &&
+              podman rm $CONTAINER || true &&
+              podman run -d --name $CONTAINER --network=host $IMAGE_NAME
+            "
+          '''
+        }
+      }
     }
-  }
-}
-
-
-
   }
 
   post {
     always {
+      echo "🧹 Limpiando artefactos locales..."
       sh '''
         rm -rf target
         rm -rf *.tar *.gz *.zip || true
