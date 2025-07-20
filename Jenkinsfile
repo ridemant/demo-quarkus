@@ -7,7 +7,7 @@ pipeline {
     VPS_TARGET   = 'root@167.86.115.24'
     IMAGE_NAME   = 'quarkus-app-dev:latest'
     CONTAINER    = 'quarkus-dev'
-    REMOTE_PORT  = '9081'
+    REMOTE_PORT  = '9092'
   }
 
   tools {
