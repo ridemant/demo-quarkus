@@ -20,7 +20,10 @@ pipeline {
 
     stage('Compilar') {
       steps {
-        sh './mvnw clean package -DskipTests'
+        sh '''
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
+        '''
       }
     }
 
