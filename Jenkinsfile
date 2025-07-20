@@ -15,17 +15,7 @@ pipeline {
   }
 
   stages {
-stage('Verificar usuario en VPS') {
-  steps {
-    sshagent([SSH_KEY_ID]) {
-      sh """
-        ssh -o StrictHostKeyChecking=no ${VPS_TARGET} '
-          echo "👤 Usuario actual: \$(whoami)"
-        '
-      """
-    }
-  }
-}
+
     stage('Compilar') {
       steps {
         sh '''
@@ -41,10 +31,8 @@ stage('Enviar al VPS y construir imagen') {
       script {
         def jarPath = sh(script: "ls target/*-runner.jar", returnStdout: true).trim()
         def jarName = jarPath.tokenize('/').last()
-        echo "📦 JAR detectado: ${jarName}"
 
         sh """
-          echo "📤 Subiendo al VPS..."
           ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
           scp ${jarPath} ${VPS_TARGET}:/tmp/quarkus-build/${jarName}
 
@@ -66,7 +54,6 @@ stage('Enviar al VPS y construir imagen') {
       steps {
         sshagent([SSH_KEY_ID]) {
           sh """
-            echo "🚀 Desplegando en Podman..."
             ssh ${VPS_TARGET} '
               podman stop ${CONTAINER} || true &&
               podman rm ${CONTAINER} || true &&
@@ -80,14 +67,13 @@ stage('Enviar al VPS y construir imagen') {
 
   post {
     always {
-      echo "🧹 Limpiando workspace final..."
       sh '''
         rm -rf target
         rm -rf *.tar *.gz *.zip || true
       '''
     }
     success {
-      echo "✅ Despliegue listo en: http://${VPS_TARGET.split('@')[1]}:${REMOTE_PORT}"
+
     }
   }
 }
