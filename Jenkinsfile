@@ -57,7 +57,7 @@ stage('Desplegar en Podman') {
         ssh ${VPS_TARGET} '
           podman stop ${CONTAINER} || true &&
           podman rm ${CONTAINER} || true &&
-          podman run -d --name ${CONTAINER} --network=host ${IMAGE_NAME}
+          podman run -d --name ${CONTAINER} -p ${REMOTE_PORT}:8081 ${IMAGE_NAME}
         '
       """
     }
