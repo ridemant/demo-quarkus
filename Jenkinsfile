@@ -50,19 +50,22 @@ stage('Enviar al VPS y construir imagen') {
   }
 }
 
-    stage('Desplegar en Podman') {
-      steps {
-        sshagent([SSH_KEY_ID]) {
-          sh """
-            ssh ${VPS_TARGET} '
-              podman stop ${CONTAINER} || true &&
-              podman rm ${CONTAINER} || true &&
-              podman run -d --name ${CONTAINER} -p ${REMOTE_PORT}:8080 ${IMAGE_NAME}
-            '
-          """
-        }
-      }
+stage('Desplegar en Podman') {
+  steps {
+    sshagent([SSH_KEY_ID]) {
+      sh """
+        ssh ${VPS_TARGET} '
+          podman stop ${CONTAINER} || true &&
+          podman rm ${CONTAINER} || true &&
+          podman run -d --name ${CONTAINER} --network=host ${IMAGE_NAME}
+        '
+      """
     }
+  }
+}
+
+
+
   }
 
   post {
