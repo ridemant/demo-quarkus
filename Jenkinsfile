@@ -15,7 +15,17 @@ pipeline {
   }
 
   stages {
-
+stage('Verificar usuario en VPS') {
+  steps {
+    sshagent([SSH_KEY_ID]) {
+      sh """
+        ssh -o StrictHostKeyChecking=no ${VPS_TARGET} '
+          echo "👤 Usuario actual: \$(whoami)"
+        '
+      """
+    }
+  }
+}
     stage('Compilar') {
       steps {
         sh '''
