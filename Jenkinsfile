@@ -41,7 +41,7 @@ stage('Enviar al VPS y construir imagen') {
             echo "🔧 Creando Dockerfile temporal..." &&
             echo "FROM eclipse-temurin:17" > Dockerfile &&
             echo "COPY ${jarName} app.jar" >> Dockerfile &&
-            echo "ENTRYPOINT [\\"java\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
+            echo "ENTRYPOINT [\\"java\\", \\"-Dquarkus.http.port=8081\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
             podman build -t ${IMAGE_NAME} .
           '
         """
