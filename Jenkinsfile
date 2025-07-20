@@ -16,11 +16,7 @@ pipeline {
 
   stages {
 
-      stage('Limpiar Workspace') {
-        steps {
-          sh 'rm -rf * .[^.]* || true'
-        }
-      }
+
 
     stage('Compilar') {
       steps {
@@ -60,6 +56,13 @@ pipeline {
   }
 
   post {
+    always {
+      echo "Limpiando workspace final..."
+      sh '''
+        rm -rf target
+        rm -rf *.tar *.gz *.zip || true
+      '''
+    }
     success {
       echo "✅ Despliegue listo en: http://${VPS_TARGET.split('@')[1]}:${REMOTE_PORT}"
     }
