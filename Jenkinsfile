@@ -16,8 +16,6 @@ pipeline {
 
   stages {
 
-
-
     stage('Compilar') {
       steps {
         sh '''
@@ -34,8 +32,13 @@ pipeline {
             echo "📤 Subiendo proyecto al VPS..."
             ssh -o StrictHostKeyChecking=no ${VPS_TARGET} 'rm -rf /tmp/quarkus-build && mkdir -p /tmp/quarkus-build'
             scp -r * ${VPS_TARGET}:/tmp/quarkus-build
+
             ssh ${VPS_TARGET} '
               cd /tmp/quarkus-build &&
+              echo "🔧 Creando Dockerfile temporal..." &&
+              echo "FROM docker.io/eclipse-temurin:17" > Dockerfile &&
+              echo "COPY target/*-runner.jar app.jar" >> Dockerfile &&
+              echo "ENTRYPOINT [\\"java\\", \\"-jar\\", \\"app.jar\\"]" >> Dockerfile &&
               podman build -t ${IMAGE_NAME} .
             '
           """
@@ -61,7 +64,7 @@ pipeline {
 
   post {
     always {
-      echo "Limpiando workspace final..."
+      echo "🧹 Limpiando workspace final..."
       sh '''
         rm -rf target
         rm -rf *.tar *.gz *.zip || true
